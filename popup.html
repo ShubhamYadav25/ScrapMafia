@@ -2,22 +2,60 @@
 <html>
 <head>
   <style>
-    body { font-family: Arial, sans-serif; width: 250px; padding: 10px; }
-    input { width: 100%; margin-bottom: 8px; }
-    button { width: 100%; margin-top: 5px; }
+    body {
+      font-family: Arial, sans-serif;
+      width: 280px;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+    h2 {
+      font-size: 16px;
+      margin-top: 0;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 8px;
+    }
+    input {
+      width: 100%;
+      padding: 5px;
+      margin-top: 3px;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.save {
+      background-color: #4CAF50;
+      color: white;
+    }
+    button.test {
+      background-color: #008CBA;
+      color: white;
+    }
   </style>
 </head>
 <body>
-  <h3>Job Scraper Config</h3>
-  <label>Bot Token:</label>
-  <input id="botToken" type="text" placeholder="Enter Telegram Bot Token" />
+  <h2>Job Scraper Settings</h2>
+  
+  <label>Telegram Bot Token:</label>
+  <input id="botToken" type="text" />
 
-  <label>Chat ID:</label>
-  <input id="chatId" type="text" placeholder="Enter Chat ID" />
+  <label>Telegram Chat ID:</label>
+  <input id="chatId" type="text" />
 
-  <button id="saveBtn">Save</button>
-  <button id="testBtn">Test Connection</button>
-  <button id="toggleScrapeBtn">Start Scraping</button>
+  <button id="saveBtn" class="save">💾 Save</button>
+  <button id="testBtn" class="test">🧪 Test Connection</button>
+
+  <p style="font-size: 12px; color: #777; margin-top: 12px;">
+    Auto-scrapes jobs whenever you are on LinkedIn Feed.
+  </p>
 
   <script src="popup.js"></script>
 </body>

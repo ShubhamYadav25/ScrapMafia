@@ -1,26 +1,13 @@
-// contentScript.js
+console.log("🚀 LinkedIn Job Scraper active");
 
-let scrollTimeout;
+// Run scraping at random time intervals (20–40s)
+function startScraping() {
+  scrapeJobs(); // first run
+  const delay = Math.floor(Math.random() * 20000) + 20000; // 20-40s
+  setTimeout(startScraping, delay);
+}
+startScraping();
 
-// Watch for scrolling, but only scrape once user *stops* scrolling
-window.addEventListener("scroll", () => {
-  clearTimeout(scrollTimeout);
-
-  scrollTimeout = setTimeout(() => {
-    // Check we still have a valid extension runtime
-    if (chrome.runtime?.id) {
-      chrome.storage.local.get("scrapingActive", data => {
-        if (data.scrapingActive) {
-          scrapeJobs();
-        }
-      });
-    } else {
-      console.warn("⚠️ Extension context invalidated — refresh the page after reloading the extension.");
-    }
-  }, 2000); // 2s after stop scrolling
-});
-
-// === Scraper function ===
 function scrapeJobs() {
   try {
     let posts = document.querySelectorAll(".update-components-text");
@@ -29,51 +16,42 @@ function scrapeJobs() {
     posts.forEach(post => {
       let text = post.innerText;
 
-      // Basic pattern matches — custom regex can be enhanced here
       let emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/);
-      let companyMatch = text.match(/at\s+([A-Z][A-Za-z0-9& ]+)/);
-      let positionMatch =
-        text.match(/looking for\s+(.*?)\s+at/i) ||
-        text.match(/hiring\s+(.*?)\s+at/i);
+      let numberMatch = text.match(/\+?\d[\d\s\-KATEX_INLINE_OPENKATEX_INLINE_CLOSE]{7,}\d/);
+      let roleMatch = text.match(/role[:\-]?\s*(.+)/i);
+      let qualificationMatch = text.match(/qualification[:\-]?\s*(.+)/i);
+      let industryMatch = text.match(/industry[:\-]?\s*(.+)/i);
+      let salaryMatch = text.match(/(?:salary|ctc)[:\-]?\s*([^\n]+)/i);
+      let locationMatch = text.match(/(?:location|based in)[:\-]?\s*(.+)/i);
+      let skillsMatch = text.match(/skills?[:\-]?\s*(.+)/i);
       let experienceMatch = text.match(/(\d+\+?\s+years?)/i);
 
-      let jobLinkElement =
-        post.closest("div.feed-shared-update")?.querySelector(
-          "a[href*='linkedin.com/jobs']"
-        );
-      let jobLink = jobLinkElement ? jobLinkElement.href.split("?")[0] : "";
+      let jobLinkEl = post.closest("div.feed-shared-update")?.querySelector("a[href*='linkedin.com/jobs']");
+      let jobLink = jobLinkEl ? jobLinkEl.href.split("?")[0] : "";
 
-      // Save result only if relevant
       if (emailMatch || jobLink) {
         results.push({
           email: emailMatch ? emailMatch[0] : "",
-          company: companyMatch ? companyMatch[1] : "",
-          position: positionMatch ? positionMatch[1] : "",
+          number: numberMatch ? numberMatch[0] : "",
+          role: roleMatch ? roleMatch[1] : "",
+          qualification: qualificationMatch ? qualificationMatch[1] : "",
+          industry: industryMatch ? industryMatch[1] : "",
+          salary: salaryMatch ? salaryMatch[1] : "",
+          location: locationMatch ? locationMatch[1] : "",
+          skills: skillsMatch ? skillsMatch[1] : "",
           experience: experienceMatch ? experienceMatch[0] : "",
           jobLink: jobLink
         });
       }
     });
 
-    // === Send results, but safely check runtime context ===
     if (results.length > 0) {
-      if (chrome.runtime?.id) {
-        try {
-          chrome.runtime.sendMessage({ action: "jobsFound", data: results });
-          console.log("📨 Sent jobs to background:", results);
-        } catch (err) {
-          console.warn(
-            "⚠️ Could not send message — extension context missing:",
-            err
-          );
-        }
-      } else {
-        console.warn(
-          "⚠️ Attempted to send but extension runtime is invalidated (probably reloaded)."
-        );
-      }
+      console.log("📨 Found jobs:", results);
+      chrome.runtime.sendMessage({ action: "jobsFound", data: results });
+    } else {
+      console.log("ℹ️ No jobs this run");
     }
   } catch (err) {
-    console.error("❌ Error in scrapeJobs():", err);
+    console.error("❌ scrapeJobs error:", err);
   }
 }
