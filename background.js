@@ -1,30 +1,36 @@
-const TELEGRAM_TOKEN = "8351501293:AAHzTfB9bVWggXguHWXu-8wb0mygF3gAlnA";
-const CHAT_ID = "7888363351";
-
-// Track sent jobs to avoid duplicates
 let sentJobs = {};
 
-// Listen for messages from contentScript.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "jobsFound") {
-    console.log("Background got jobs:", message.data);
-
-    message.data.forEach(job => {
-      let uniqueKey = (job.email || "") + "|" + (job.jobLink || "");
-      if (!sentJobs[uniqueKey]) {
-        sentJobs[uniqueKey] = true;
-        console.log("Sending to Telegram:", job);
-        sendToTelegram(job);  // ✅ now this exists right below
-      } else {
-        console.log("Duplicate ignored:", job);
-      }
+    chrome.storage.local.get(["botToken", "chatId", "scrapingActive"], cfg => {
+      if (!cfg.scrapingActive) return;
+      message.data.forEach(job => {
+        let key = (job.email || "") + "|" + (job.jobLink || "");
+        if (!sentJobs[key]) {
+          sentJobs[key] = true;
+          sendToTelegram(cfg.botToken, cfg.chatId, job);
+        }
+      });
     });
+  }
+
+  if (message.action === "testConnection") {
+    chrome.storage.local.get(["botToken", "chatId"], cfg => {
+      sendToTelegram(cfg.botToken, cfg.chatId, { 
+        email: "", company: "", position: "", experience: "", jobLink: ""
+      }, "✅ Test message: Hello from Job Scraper!");
+    });
+  }
+
+  if (message.action === "toggleScraping") {
+    sentJobs = {}; // reset memory when restarting
   }
 });
 
-// === Function must live in SAME FILE to be defined ===
-async function sendToTelegram(job) {
-  const text = `Job Found:
+async function sendToTelegram(botToken, chatId, job, customText = null) {
+  if (!botToken || !chatId) { console.error("Missing Bot Token/Chat ID."); return; }
+
+  const text = customText || `Job Found:
 Email: ${job.email}
 Company: ${job.company}
 Position: ${job.position}
@@ -32,17 +38,13 @@ Experience: ${job.experience}
 Job link: ${job.jobLink}`;
 
   try {
-    let res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    let res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: text
-      })
+      body: JSON.stringify({ chat_id: chatId, text: text })
     });
-    let data = await res.json();
-    console.log("Telegram API response:", data);
+    console.log("Telegram:", await res.json());
   } catch (err) {
-    console.error("Failed sending to Telegram:", err);
+    console.error("Telegram send failed:", err);
   }
 }
